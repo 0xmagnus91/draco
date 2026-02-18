@@ -55,6 +55,21 @@ jobs:
           app-id: '${{ vars.APP_ID }}'
           private-key: '${{ secrets.APP_PRIVATE_KEY }}'
 
+      # --- PoC addition START ---
+      # Gemini CLI's environmentSanitization.ts strips GITHUB_TOKEN/GH_TOKEN
+      # from the subprocess env (/TOKEN/i in NEVER_ALLOWED_NAME_PATTERNS).
+      # On the real google/draco, this causes gh CLI calls to fail silently.
+      # This step persists auth to ~/.config/gh/hosts.yml (file-based auth)
+      # so tool calls succeed and we can demonstrate injection impact.
+      - name: 'Authenticate gh CLI'
+        env:
+          MY_TOKEN: '${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}'
+        run: |
+          echo "${MY_TOKEN}" | gh auth login --with-token
+          gh auth status
+          gh repo set-default '${{ github.repository }}'
+      # --- PoC addition END ---
+
       - name: 'Run Gemini Issue Triage'
         uses: 'google-github-actions/run-gemini-cli@v0'
         id: 'gemini_issue_triage'
@@ -66,6 +81,8 @@ jobs:
           REPOSITORY: '${{ github.repository }}'
         with:
           gemini_cli_version: '${{ vars.GEMINI_CLI_VERSION }}'
+          # PoC: using gemini-2.5-pro via API key (original uses default via Vertex AI)
+          gemini_model: 'gemini-2.5-pro'
           gcp_workload_identity_provider: '${{ vars.GCP_WIF_PROVIDER }}'
           gcp_project_id: '${{ vars.GOOGLE_CLOUD_PROJECT }}'
           gcp_location: '${{ vars.GOOGLE_CLOUD_LOCATION }}'
@@ -73,6 +90,9 @@ jobs:
           gemini_api_key: '${{ secrets.GEMINI_API_KEY }}'
           use_vertex_ai: '${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}'
           use_gemini_code_assist: '${{ vars.GOOGLE_GENAI_USE_GCA }}'
+          # PoC: enable debug logging and artifact upload for evidence capture
+          gemini_debug: 'true'
+          upload_artifacts: true
           settings: |-
             {
               "maxSessionTurns": 25,
