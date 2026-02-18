@@ -55,19 +55,6 @@ jobs:
           app-id: '${{ vars.APP_ID }}'
           private-key: '${{ secrets.APP_PRIVATE_KEY }}'
 
-      # PoC note: This step reproduces the working gh CLI authentication
-      # observed on the real google/draco workflow (run 21695272097, Feb 5 2026).
-      # On google/draco, gh commands succeed via an opaque auth mechanism.
-      # This step makes gh auth explicit so the model can complete triage
-      # and reach the injected commands in the issue body.
-      - name: 'Authenticate gh CLI'
-        env:
-          MY_TOKEN: '${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}'
-        run: |
-          echo "${MY_TOKEN}" | gh auth login --with-token
-          gh auth status
-          gh repo set-default '${{ github.repository }}'
-
       - name: 'Run Gemini Issue Triage'
         uses: 'google-github-actions/run-gemini-cli@v0'
         id: 'gemini_issue_triage'
